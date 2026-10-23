@@ -227,7 +227,7 @@
       let tag = '<span class="tag none">Nobody\'s selling</span>';
       if (!ok) tag = lockTag(d.rep);
       else if (p) {
-        if (spike) tag = `<span class="tag ${spike.tone}">${spike.tone === 'spike' ? 'Price spike!' : 'Crash!'}</span>`;
+        if (spike) tag = `<span class="tag ${spike.tone}">${spike.tone === 'spike' ? 'Spike: sell here' : 'Crash: buy cheap'}</span>`;
         else if (p < d.lo * 1.1) tag = '<span class="tag cheap">Cheap</span>';
         else if (p > d.hi * 0.92) tag = '<span class="tag high">Sells high</span>';
         else tag = '<span class="tag none">Normal</span>';

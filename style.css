@@ -147,7 +147,7 @@ button { font: inherit; color: inherit; }
 .ticker { flex: none; overflow: hidden; white-space: nowrap; background: #000; border-top: 1px solid rgba(255, 47, 179, 0.35); border-bottom: 1px solid rgba(255, 47, 179, 0.35); font: 700 13px/26px var(--cond); letter-spacing: 0.04em; color: var(--amber); }
 .ticker span { display: inline-block; padding-left: 100%; animation: tick 22s linear infinite; }
 .ticker em { font-style: normal; margin: 0 16px; color: var(--pink); }
-.ticker .spike { color: var(--green); } .ticker .crash { color: var(--cyan); }
+.ticker .spike { color: var(--amber); } .ticker .crash { color: var(--green); }
 @keyframes tick { to { transform: translateX(-100%); } }
 
 /* ---------- main panel and tabs ---------- */
@@ -175,8 +175,8 @@ button { font: inherit; color: inherit; }
 .cap b { font: 700 15px var(--cond); white-space: nowrap; }
 .news { padding: 10px 12px; margin-bottom: 10px; display: grid; gap: 6px; }
 .news div { font: 600 14px/1.3 var(--cond); padding-left: 10px; border-left: 3px solid var(--dim); }
-.news .spike { border-color: var(--green); color: #c9ffe6; }
-.news .crash { border-color: var(--cyan); color: #c9f7ff; }
+.news .spike { border-color: var(--amber); color: #ffe2b0; }
+.news .crash { border-color: var(--green); color: #c9ffe6; }
 .drugs { display: grid; gap: 8px; }
 .drug { display: grid; grid-template-columns: 54px 1fr auto; align-items: center; gap: 10px; padding: 8px 10px 8px 8px; }
 .drug .art { width: 54px; border-radius: 12px; }
@@ -187,7 +187,8 @@ button { font: inherit; color: inherit; }
 .drug .pr strong { display: block; font: 700 19px/1 var(--cond); }
 .drug .pr .tag { font: 700 10px var(--cond); letter-spacing: 0.1em; text-transform: uppercase; }
 .tag.cheap { color: var(--green); } .tag.high { color: var(--amber); } .tag.none { color: var(--dim); }
-.tag.spike { color: var(--green); text-shadow: 0 0 8px rgba(61, 255, 160, 0.6); } .tag.crash { color: var(--cyan); text-shadow: 0 0 8px rgba(34, 228, 255, 0.6); }
+/* orange = high, good to sell; green = cheap, good to buy */
+.tag.spike { color: var(--amber); text-shadow: 0 0 8px rgba(255, 176, 32, 0.6); } .tag.crash { color: var(--green); text-shadow: 0 0 8px rgba(61, 255, 160, 0.6); }
 .drug .acts { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .drug.na { opacity: 0.55; }
 .drug .profit { font-weight: 700; } .profit.up { color: var(--green); } .profit.down { color: var(--red); }
