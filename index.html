@@ -12,7 +12,7 @@
 <script>
   // On Kaotic Gaming the files live under /play/<game>/; opened on its own, they're next to this page.
   // Bump ASSET_V when the css/js change so browsers fetch the new copies.
-  const ASSET_V = '20261022-2';
+  const ASSET_V = '20261023-1';
   const assetRoot = window.KG_BOOT ? `/play/${window.KG_BOOT.game}/` : './';
   window.DW_ROOT = assetRoot;
   document.write(`<link rel="stylesheet" href="${assetRoot}style.css?v=${ASSET_V}">`);
@@ -88,6 +88,7 @@
       <button type="button" data-tab="city"><svg viewBox="0 0 24 24"><path d="M3 21V9l5-3v15M8 21V4l8-2v19M16 21V10l5 2v9M2 21h20"/></svg><span>City</span></button>
       <button type="button" data-tab="crew"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.2c3 .2 5.5 2.4 5.5 5.8"/></svg><span>Crew</span></button>
       <button type="button" data-tab="jobs"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5"/></svg><span>Jobs</span></button>
+      <button type="button" data-tab="empire"><svg viewBox="0 0 24 24"><path d="M3 18h18l-1.5-10-4.5 4-3-6-3 6-4.5-4z"/><path d="M4 21h16"/></svg><span>Empire</span></button>
     </nav>
   </section>
 
