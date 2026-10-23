@@ -402,7 +402,7 @@
     if (id === 'fixer') {
       const list = G.offersHere(s);
       const rows = list.length ? list.map(o => `<div class="item contract"><div><div class="nm">${esc(o.title)}</div><div class="st">${esc(o.blurb || '')}</div>
-        <div class="st">Pays <b>${M(o.pay)}</b> · ${o.days} days · +rep</div></div>${buyBtn(`data-accept="${o.id}"`, 0, s.contracts.length < 3, 'Take it', 'cyan')}</div>`).join('') : '<p class="note">No work right now. New contracts every few days.</p>';
+        <div class="st">Pays <b>${M(o.pay)}</b> · ${o.type === 'smuggle' ? `hold ${o.hold} days, deliver within ${o.days - o.hold}` : `${o.days} days`} · +rep</div></div>${buyBtn(`data-accept="${o.id}"`, 0, s.contracts.length < 3, 'Take it', 'cyan')}</div>`).join('') : '<p class="note">No work right now. New contracts every few days.</p>';
       return `<div class="card svc">${svcHead('fixer', true)}<div class="svc-body"><p class="note">Active contracts: ${s.contracts.length}/3 (see Jobs). Miss the deadline and your rep takes the hit.</p><div class="items">${rows}</div></div></div>`;
     }
     if (id === 'supply') {
@@ -557,11 +557,12 @@
   }
   function jobs() {
     const here = G.contractsHere(s).map(c => {
-      const ready = c.type === 'smuggle' || (s.inv[c.drug] && s.inv[c.drug].qty >= c.qty);
+      const early = c.type === 'smuggle' && c.ready && s.day < c.ready;
+      const ready = (c.type === 'smuggle' && !early) || (c.type === 'deliver' && s.inv[c.drug] && s.inv[c.drug].qty >= c.qty);
       return `<div class="card job contract-here"><div class="job-body"><h3>${esc(c.title)}</h3><p>${c.type === 'deliver' ? `You have ${s.inv[c.drug] ? s.inv[c.drug].qty : 0} of ${c.qty}.` : 'The buyer is waiting.'} Pays ${M(c.pay)}.</p>
-        <button class="btn wide green" data-complete="${c.id}" ${ready ? '' : 'disabled'}>${ready ? 'Hand it over' : 'Not enough on you'}</button></div></div>`;
+        <button class="btn wide green" data-complete="${c.id}" ${ready ? '' : 'disabled'}>${ready ? 'Hand it over' : early ? `Buyer ready on day ${c.ready}` : 'Not enough on you'}</button></div></div>`;
     }).join('');
-    const active = s.contracts.filter(c => c.to !== s.loc || c.type === 'hit').map(c => `<div class="kv"><span>${esc(c.title)}</span><b>${esc(G.district(c.to).name)} · by day ${c.until}</b></div>`).join('');
+    const active = s.contracts.filter(c => c.to !== s.loc || c.type === 'hit').map(c => `<div class="kv"><span>${esc(c.title)}</span><b>${c.type === 'smuggle' && c.ready > s.day ? `hold until day ${c.ready} · ` : ''}${esc(G.district(c.to).name)} by day ${c.until}</b></div>`).join('');
     const list = G.jobsHere(s);
     const cards = list.map(j => {
       const info = G.jobInfo(j), f = G.FACTIONS[j.faction];

@@ -950,9 +950,10 @@
         out.push({ id: 'k' + (s.nextId++), type, drug: d.id, qty, to: to.id, days, pay: nice(qty * d.hi * rnd(1.25, 1.5) * fixer), rep: 2,
           title: `${qty} ${d.name} to ${to.name}`, blurb: `Bring ${qty} ${d.name} to a buyer in ${to.name}. Pays well above street price.` });
       } else if (type === 'smuggle') {
-        const size = ri(15, 45);
-        out.push({ id: 'k' + (s.nextId++), type, size, to: to.id, days, pay: nice((20000 + s.rep * 9000) * rnd(0.8, 1.3) * G.scale(s) * fixer), rep: 3,
-          title: `A sealed package to ${to.name}`, blurb: `Takes ${size} space. Don't open it, and don't get caught with it: cops look harder while you carry it.` });
+        // you have to sit on it: the buyer only takes it after `hold` days, then you have `window` days to get it there
+        const size = ri(15, 45), hold = ri(2, 5), window = 3 + (to.days || 0);
+        out.push({ id: 'k' + (s.nextId++), type, size, to: to.id, hold, days: hold + window, pay: nice((20000 + s.rep * 9000) * rnd(0.8, 1.3) * G.scale(s) * fixer * (1 + hold * 0.15)), rep: 3,
+          title: `A sealed package for ${to.name}`, blurb: `Takes ${size} space. Keep it hidden for ${hold} days, then deliver it to ${to.name} within ${window} days. Cops look harder while you carry it, and getting busted loses it.` });
       } else {
         const f = G.FACTIONS[to.faction];
         const target = `${pick(G.FIRST)} ${pick(['the Butcher', 'Scar', 'Big Lou', 'the Snake', 'Two-Guns'])}`;
@@ -969,7 +970,7 @@
     if (s.contracts.length >= 3) return { ok: false, msg: 'You\'ve got three contracts already. Finish one first.' };
     if (o.type === 'smuggle' && G.space(s) < o.size) return { ok: false, msg: `You need ${o.size} free space for the package.` };
     list.splice(list.indexOf(o), 1);
-    const c = { ...o, until: s.day + o.days };
+    const c = { ...o, until: s.day + o.days, ready: o.type === 'smuggle' ? s.day + o.hold : s.day };
     s.contracts.push(c);
     if (c.type === 'hit') {
       // the hit shows up as a job in that district
@@ -977,7 +978,7 @@
       jl.list.push({ id: 'j' + (s.nextId++), type: 'hit', contract: c.id, dist: c.to, faction: c.faction, foes: fixedFoes(s, c.faction, ri(4, 6) + Math.floor(s.rep / 25), 1.1, c.target),
         cash: c.pay, rep: c.rep, heat: 12, done: false, title: c.title, blurb: `The Fixer wants ${c.target} gone before day ${c.until + 1}. Pays ${G.money(c.pay)}.` });
     }
-    return { ok: true, msg: `Deal. ${c.title}, by day ${c.until}.` };
+    return { ok: true, msg: c.type === 'smuggle' ? `Deal. Keep it hidden until day ${c.ready}, then get it to ${DIST[c.to].name} by day ${c.until}.` : `Deal. ${c.title}, by day ${c.until}.` };
   };
   // contracts you can finish right here
   G.contractsHere = s => s.contracts.filter(c => !c.done && c.to === s.loc && c.type !== 'hit');
@@ -986,6 +987,10 @@
     const c = s.contracts.find(x => !x.done && x.to === s.loc);
     if (!c) return false;
     if (c.type === 'smuggle') {
+      if (c.ready && s.day < c.ready) {
+        s.pending = { kind: 'event', id: 'contract', art: 'char_fixer', title: 'Too early', text: `The buyer isn't ready until day ${c.ready}. Keep the package hidden and come back between day ${c.ready} and day ${c.until}.`, data: {}, choices: [{ id: 'ok', label: 'Got it' }] };
+        return true;
+      }
       const r = G.complete(s, c.id);
       s.pending = { kind: 'event', id: 'contract', art: 'char_fixer', title: 'Package delivered', text: `A man in a parked car takes the package without a word. ${r.msg}`, data: {}, choices: [{ id: 'ok', label: 'Nice' }] };
     } else if (c.type === 'deliver') {
@@ -1001,6 +1006,7 @@
   G.complete = function (s, id) {
     const c = s.contracts.find(x => x.id === id);
     if (!c || c.to !== s.loc || c.type === 'hit') return { ok: false };
+    if (c.type === 'smuggle' && c.ready && s.day < c.ready) return { ok: false, msg: `The buyer isn't ready until day ${c.ready}.` };
     if (c.type === 'deliver') {
       const h = s.inv[c.drug];
       if (!h || h.qty < c.qty) return { ok: false, msg: `You need ${c.qty} ${DRUG[c.drug].name} on you.` };
