@@ -45,7 +45,7 @@
       weapons: { bat: 1 }, armors: {}, items: { medkit: 1 }, crew: [], fronts: [], lux: [], stashes: {},
       turf: {}, beaten: {}, manhunt: 0, chief: false, judge: false, king: false,
       press: {}, prices: {}, seen: {}, news: [], jobs: {}, recruits: {}, shops: {}, offers: {}, contracts: [],
-      tip: null, pending: null, log: [], over: null, nextId: 1, peak: 0,
+      tip: null, pending: null, log: [], over: null, nextId: 1, peak: 0, marks: 0, repFix: 1,
       stats: { sold: 0, bought: 0, fightsWon: 0, fightsLost: 0, jobs: 0, busts: 0, crewLost: 0, copsBeaten: 0, contracts: 0, turfTaken: 0, gambled: 0 },
     };
     if (meta) meta.runs++;
@@ -57,6 +57,33 @@
   G.title = s => { let t = G.TITLES[0]; for (const x of G.TITLES) if (s.rep >= x.rep) t = x; return t; };
   G.nextTitle = s => G.TITLES.find(x => x.rep > s.rep) || null;
   function gainRep(s, n) { s.rep = clamp(Math.round((s.rep + n) * 100) / 100, 0, 100); }
+  // dealing builds your name: mostly the profit, partly just the volume you move
+  const REP_PER = 6000;
+  const tradeRep = (s, total, profit) => (Math.max(0, profit) * 0.7 + total * 0.3) / (REP_PER * (1 + s.rep / 4));
+  // the street notices when you get rich
+  G.NET_MILESTONES = [25e3, 1e5, 2.5e5, 5e5, 1e6, 2.5e6, 5e6, 1e7, 2.5e7, 5e7, 1e8, 2.5e8, 5e8, 1e9, 2.5e9];
+  function milestones(s) {
+    const net = G.netWorth(s);
+    s.marks = s.marks || 0;
+    while (s.marks < G.NET_MILESTONES.length && net >= G.NET_MILESTONES[s.marks]) {
+      gainRep(s, 2);
+      note(s, `Word gets around: you're worth ${G.short(G.NET_MILESTONES[s.marks])}. +2 rep.`);
+      s.marks++;
+    }
+  }
+  G.milestones = milestones;
+  // runs from before the rep fix get credit for the trading they already did
+  G.repFix = function (s) {
+    if (s.repFix) return;
+    s.repFix = 1;
+    let r = Math.floor(s.rep), budget = s.stats.sold * 0.3 + Math.max(0, s.stats.sold - s.stats.bought) * 0.7;
+    while (r < 100 && budget >= REP_PER * (1 + r / 4)) { budget -= REP_PER * (1 + r / 4); r++; }
+    if (r > s.rep) { note(s, `The street caught up with what you've been moving: rep ${Math.floor(s.rep)} → ${r}.`); s.rep = r; }
+    s.peak = Math.max(s.peak, G.netWorth(s));
+    const before = s.marks || 0; s.marks = 0;
+    while (s.marks < G.NET_MILESTONES.length && s.peak >= G.NET_MILESTONES[s.marks]) s.marks++;
+    gainRep(s, 2 * Math.max(0, s.marks - before));
+  };
   G.canTrade = (s, id) => s.rep >= DRUG[id].rep;
 
   // ---------- carrying ----------
@@ -189,7 +216,8 @@
     s.stats.sold += q.total;
     addHeat(s, q.total, 1, DRUG[id]);
     const profit = Math.round(q.total - paid);
-    if (profit > 0) gainRep(s, Math.min(1.5, profit / (8000 * (1 + s.rep / 4))));
+    gainRep(s, Math.min(1.5, tradeRep(s, q.total, profit)));
+    milestones(s);
     return { ok: true, msg: `Sold ${qty} ${DRUG[id].name} for ${G.money(q.total)} (${profit >= 0 ? '+' : ''}${G.money(profit)}).`, profit };
   };
   // dealing where the cops look gets you noticed; the heavy stuff gets you noticed faster
@@ -241,6 +269,7 @@
     for (const c of s.contracts) if (!c.done && !c.failed && s.day > c.until) { c.failed = true; gainRep(s, -2); note(s, `You missed a contract: ${c.title}.`, 'bad'); }
     s.contracts = s.contracts.filter(c => !c.done && !c.failed);
     s.peak = Math.max(s.peak, G.netWorth(s));
+    milestones(s);
   }
 
   // land in a district: fresh prices, jobs, recruits, shop stock and contracts
@@ -623,7 +652,6 @@
       p.result = { outcome: 'escaped', title: 'You got away', text: p.job ? 'You pulled out and got away.' : 'You lost them in the back streets.' };
       if (p.reason === 'cops') s.heat = clamp(s.heat + 6, 0, 100);
       if (p.reason === 'retaliation') loseTurf(s, s.loc);
-      gainRep(s, -0.5);
       return { ok: true, escaped: true };
     }
     const squad = G.loadout(s), hits = [];

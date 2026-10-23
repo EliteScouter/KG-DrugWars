@@ -79,6 +79,7 @@
     else { try { data = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) {} }
     const got = G.load(data);
     if (got) { meta = got.meta; s = got.run; }
+    if (s && !s.over) G.repFix(s);
   }
 
   // ---------- little UI helpers ----------
@@ -599,7 +600,8 @@
       <div class="turfs">${turfRows}</div>
       <div class="card svc" style="margin-top:10px"><div class="svc-body"><h3>The families</h3>${factions}
         <p class="note" style="margin-top:6px">Win a district's turf war (Jobs tab) to own it. Own all of a family's districts to face its boss. Own all nine to rule Vice Harbor.</p></div></div>
-      <div class="card svc"><div class="svc-body"><h3>Rep unlocks</h3>${repUnlocks()}</div></div>
+      <div class="card svc"><div class="svc-body"><h3>Rep unlocks</h3>${repUnlocks()}
+        <p class="note" style="margin-top:6px">Earn rep by selling at a profit (bigger loads count more), getting richer, winning fights, pulling jobs, finishing the Fixer's contracts and taking turf. Paying street tax, losing crew to payroll and missing contracts cost rep.</p></div></div>
       ${fronts ? `<div class="card svc"><div class="svc-body"><h3>Businesses</h3>${fronts}</div></div>` : ''}
       ${stashes ? `<div class="card svc"><div class="svc-body"><h3>Safehouses</h3>${stashes}</div></div>` : ''}
       ${lux || officials.length ? `<div class="card svc"><div class="svc-body"><h3>The good life</h3>${lux}${officials.length ? `<div class="kv"><span>On your payroll</span><b>${officials.join(', ')}</b></div>` : ''}</div></div>` : ''}
