@@ -10,7 +10,7 @@
   G.SEASON = 2;                   // records reset when this goes up (the old economy was too easy)
   G.START = { cash: 2000, debt: 5500, hp: 100, pockets: 40 };
   G.SHARK = { rate: 0.05, graceDays: 14, baseLimit: 6000, limitPerRep: 2500 };
-  G.BANK_RATE = 0.002;
+  G.BANK_RATE = 0.0035;
 
   // ---------- street rep: what it unlocks ----------
   G.TITLES = [
@@ -46,47 +46,47 @@
   // mult: local price taste; size: how big the market is (depth); turfRep: rep to start a turf war;
   // tribute: what the district pays you each day once it's yours
   G.DISTRICTS = [
-    { id: 'downtown', name: 'Downtown', art: 'district_downtown', faction: 'kings', size: 1.3, turfRep: 30, tribute: 15000,
+    { id: 'downtown', name: 'Downtown', art: 'district_downtown', faction: 'kings', size: 1.3, turfRep: 30, tribute: 30000,
       tagline: 'Glass towers, cop cars on every corner.', lieutenant: 'Smooth Eddie',
       risk: 0.15, police: 0.85, gang: 0.2, travel: 40,
       mult: { ecstasy: 1.15, cocaine: 1.15, weed: 1.1, acid: 0.9 },
       services: ['bank', 'shark', 'hospital', 'lawyer', 'realty', 'tailor', 'stash'] },
-    { id: 'docks', name: 'The Docks', art: 'district_docks', faction: 'rats', size: 1.0, turfRep: 35, tribute: 22000,
+    { id: 'docks', name: 'The Docks', art: 'district_docks', faction: 'rats', size: 1.0, turfRep: 35, tribute: 44000,
       tagline: 'Ships unload after midnight. Nobody saw a thing.', lieutenant: 'Hooks Malone',
       risk: 0.45, police: 0.3, gang: 0.55, travel: 60,
       mult: { cocaine: 0.8, heroin: 0.78, opium: 0.85, weed: 0.9 },
       services: ['guns', 'supply', 'recruit', 'blackmarket', 'stash'] },
-    { id: 'eastside', name: 'Eastside Projects', art: 'district_eastside', faction: 'kings', size: 1.1, turfRep: 20, tribute: 9000,
+    { id: 'eastside', name: 'Eastside Projects', art: 'district_eastside', faction: 'kings', size: 1.1, turfRep: 20, tribute: 18000,
       tagline: 'Twelve floors of trouble and a broken elevator.', lieutenant: 'Lil Dre',
       risk: 0.7, police: 0.25, gang: 0.85, travel: 30,
       mult: { ludes: 0.7, speed: 0.75, weed: 0.8, meth: 0.85, cocaine: 1.2, heroin: 1.15 },
       services: ['recruit', 'guns', 'fixer', 'stash'] },
-    { id: 'campus', name: 'University Heights', art: 'district_campus', faction: 'kings', size: 0.9, turfRep: 25, tribute: 11000,
+    { id: 'campus', name: 'University Heights', art: 'district_campus', faction: 'kings', size: 0.9, turfRep: 25, tribute: 22000,
       tagline: 'Finals week. Everybody needs something.', lieutenant: 'Professor Plum',
       risk: 0.1, police: 0.35, gang: 0.1, travel: 40,
       mult: { acid: 1.3, ecstasy: 1.3, shrooms: 1.3, peyote: 1.25, weed: 1.2, heroin: 0.85 },
       services: ['tailor', 'hospital', 'stash'] },
-    { id: 'lantern', name: 'Lantern Row', art: 'district_lantern', faction: 'triad', size: 0.9, turfRep: 40, tribute: 25000,
+    { id: 'lantern', name: 'Lantern Row', art: 'district_lantern', faction: 'triad', size: 0.9, turfRep: 40, tribute: 50000,
       tagline: 'Red lanterns, back rooms, old debts.', lieutenant: 'Red Pole Chen',
       risk: 0.4, police: 0.3, gang: 0.6, travel: 50,
       mult: { opium: 0.65, heroin: 0.72, hash: 0.8, ecstasy: 1.15 },
       services: ['clinic', 'recruit', 'fixer', 'stash'] },
-    { id: 'rust', name: 'Rust Yards', art: 'district_rust', faction: 'riders', size: 0.8, turfRep: 30, tribute: 14000,
+    { id: 'rust', name: 'Rust Yards', art: 'district_rust', faction: 'riders', size: 0.8, turfRep: 30, tribute: 28000,
       tagline: 'Chop shops, biker bars and burning barrels.', lieutenant: 'Tank',
       risk: 0.65, police: 0.15, gang: 0.7, travel: 50,
       mult: { meth: 0.65, speed: 0.6, ludes: 0.75, shrooms: 0.85, cocaine: 1.12 },
       services: ['cars', 'supply', 'guns', 'stash'] },
-    { id: 'strip', name: 'The Strip', art: 'district_strip', faction: 'vitale', rep: 10, size: 1.3, turfRep: 55, tribute: 60000,
+    { id: 'strip', name: 'The Strip', art: 'district_strip', faction: 'vitale', rep: 10, size: 1.3, turfRep: 55, tribute: 120000,
       tagline: 'Casinos, neon and the Vitale family\'s money.', lieutenant: 'Joey Two-Tone',
       risk: 0.35, police: 0.45, gang: 0.65, travel: 80,
       mult: { cocaine: 1.3, ecstasy: 1.25, acid: 1.15, ludes: 1.3, meth: 1.15 },
       services: ['shark', 'bank', 'casino', 'realty', 'fixer', 'stash'] },
-    { id: 'hills', name: 'Palm Hills', art: 'district_hills', faction: 'vitale', rep: 25, size: 0.7, turfRep: 65, tribute: 80000,
+    { id: 'hills', name: 'Palm Hills', art: 'district_hills', faction: 'vitale', rep: 25, size: 0.7, turfRep: 65, tribute: 160000,
       tagline: 'Gated mansions. The rich pay anything, and so do the cops.', lieutenant: 'Carmine Vitale',
       risk: 0.1, police: 0.95, gang: 0.1, travel: 120,
       mult: { cocaine: 1.35, ecstasy: 1.25, heroin: 1.2, opium: 1.25, weed: 1.3, acid: 1.2 },
       services: ['realty', 'cars', 'hospital', 'luxury', 'stash'] },
-    { id: 'border', name: 'Border Town', art: 'district_border', faction: 'cartel', vehicle: 1, days: 2, size: 0.8, turfRep: 75, tribute: 120000,
+    { id: 'border', name: 'Border Town', art: 'district_border', faction: 'cartel', vehicle: 1, days: 2, size: 0.8, turfRep: 75, tribute: 240000,
       tagline: 'Two days of desert road. Cartel country.', lieutenant: 'El Zopilote',
       risk: 0.85, police: 0.15, gang: 0.95, travel: 1500,
       mult: { cocaine: 0.68, weed: 0.65, heroin: 0.75, meth: 0.8, peyote: 0.6 },
@@ -187,10 +187,10 @@
     { id: 'laundromat', name: 'Spin City Laundromat', price: 30000,     income: 600,    cool: 1, rep: 0,  art: 'front_laundromat' },
     { id: 'carwash',    name: 'Sudsy\'s Car Wash',    price: 120000,    income: 2200,   cool: 1, rep: 10, art: 'front_carwash' },
     { id: 'pawn',       name: 'Lucky\'s Pawn & Loan', price: 400000,    income: 7000,   cool: 1, rep: 20, art: 'front_pawn' },
-    { id: 'club',       name: 'Club Inferno',         price: 1500000,   income: 25000,  cool: 2, rep: 35, art: 'front_club' },
-    { id: 'dealership', name: 'Sunset Auto Mall',     price: 6000000,   income: 90000,  cool: 2, rep: 45, art: 'front_dealership' },
-    { id: 'casino',     name: 'The Back-Room Casino', price: 25000000,  income: 350000, cool: 3, rep: 60, art: 'front_casino' },
-    { id: 'shipping',   name: 'Harbor Shipping Line', price: 120000000, income: 1500000, cool: 3, rep: 75, art: 'front_shipping' },
+    { id: 'club',       name: 'Club Inferno',         price: 1500000,   income: 40000,  cool: 2, rep: 35, art: 'front_club' },
+    { id: 'dealership', name: 'Sunset Auto Mall',     price: 6000000,   income: 180000,  cool: 2, rep: 45, art: 'front_dealership' },
+    { id: 'casino',     name: 'The Back-Room Casino', price: 25000000,  income: 1100000, cool: 3, rep: 60, art: 'front_casino' },
+    { id: 'shipping',   name: 'Harbor Shipping Line', price: 120000000, income: 5000000, cool: 3, rep: 75, art: 'front_shipping' },
   ];
   G.LUXURIES = [
     { id: 'penthouse', name: 'Penthouse Suite',  price: 8000000,    rep: 40, gain: 3,  art: 'lux_penthouse', perk: 'You heal 10 more HP every day.' },

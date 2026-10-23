@@ -39,6 +39,7 @@ Buy low, travel, sell high, and grow from a corner hustler into the King of Vice
 | `test.js` | Plays hundreds of games with a bot to check the rules and measure the balance: `node test.js [games] [days]`. |
 | `IMAGE_PROMPTS.md` | Prompts for every picture, numbered to match the placeholders. |
 | `NEW_IMAGES_V2.md` | Just the pictures added in v2 (78 and up). |
+| `tools/pro-bot.js` | A careful bot that plays for $1B, to check the late-game balance: `node tools/pro-bot.js [games] [days]`. |
 | `tools/make-prompts.js` | Rebuilds both prompt documents from `art.js`: `node tools/make-prompts.js`. |
 
 ## Pictures

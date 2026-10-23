@@ -716,7 +716,8 @@
     const p = s.pending, r = p.result;
     const good = ['won', 'escaped', 'bribed', 'paid', 'released'].includes(r.outcome);
     const pic = r.art || (good ? (r.outcome === 'won' ? 'scene_win' : 'scene_travel') : 'scene_loss');
-    const lost = p.fallen && p.fallen.length ? `<p style="color:var(--red)">Lost: ${esc(p.fallen.join(', '))}.</p>` : '';
+    const lost = (p.fallen && p.fallen.length ? `<p style="color:var(--red)">Lost: ${esc(p.fallen.join(', '))}.</p>` : '')
+      + (p.wounded && p.wounded.length ? `<p style="color:var(--amber)">Went down but pulled through: ${esc(p.wounded.join(', '))}.</p>` : '');
     modal(`<div class="m-art">${art(pic, 'wide')}</div><div class="m-body"><h2 class="${good ? 'green' : 'red'}">${esc(r.title)}</h2><p>${esc(r.text)}</p>${lost}</div>
       <div class="m-actions"><button class="btn big neon" data-fight="close">Continue</button></div>`, 'center');
     if (KG() && r.outcome === 'won' && p.job) KG().event('job_done', { job: p.job.type, day: s.day });

@@ -273,7 +273,7 @@
     if (s.manhunt > 0) s.manhunt--;
     s.hp = Math.min(s.maxHp, s.hp + 3 + (s.lux.includes('penthouse') ? 10 : 0));
     const crewHeal = 4 + (VEHICLE[s.vehicle].heal || 0);
-    for (const c of s.crew) c.hp = Math.min(c.maxHp, c.hp + crewHeal);
+    for (const c of s.crew) if (c.hp > 0) c.hp = Math.min(c.maxHp, c.hp + crewHeal);
     // markets recover from what you did to them
     for (const d of Object.keys(s.press)) {
       for (const id of Object.keys(s.press[d])) { s.press[d][id] *= 0.45; if (Math.abs(s.press[d][id]) < 0.005) delete s.press[d][id]; }
@@ -810,6 +810,7 @@
     let fine = Math.round(Math.min(s.cash, s.cash * 0.15 + drugs * 50));
     let days = Math.min(10, 1 + Math.floor(drugs / 80) + Math.floor(s.heat / 30));
     if (s.judge) { fine = Math.round(fine / 2); days = Math.ceil(days / 2); }
+    settleDowned(s, p, 0.4);
     s.inv = {}; s.cash -= fine;
     s.heat = 15; s.manhunt = 0; s.stats.busts++;
     for (const c of s.contracts) if (c.type === 'smuggle') { c.failed = true; gainRep(s, -3); }
@@ -822,17 +823,14 @@
   }
   function checkFight(s) {
     const p = s.pending;
-    const fallen = s.crew.filter(c => c.hp <= 0);
-    for (const c of fallen) { note(s, `${c.name} didn't make it.`, 'bad'); s.stats.crewLost++; }
-    s.crew = s.crew.filter(c => c.hp > 0);
-    if (fallen.length) p.fallen = (p.fallen || []).concat(fallen.map(c => c.name));
     // you only die when nobody on your side is left standing; until then the crew fights on
-    if (s.hp <= 0 && !s.crew.length) {
+    if (s.hp <= 0 && !s.crew.some(c => c.hp > 0)) {
       if (p.reason === 'cops' && p.faction !== 'feds') { s.hp = 1; return busted(s, 'You wake up in handcuffs.'); }
       s.stats.fightsLost++;
       // half the time they leave you for dead: you lose what you carried and wake up in the hospital
-      if (p.faction !== 'feds' && chance(0.5)) {
+      if (chance(p.faction === 'feds' ? 0.4 : 0.8)) {
         const took = Math.round(s.cash * 0.3);
+        settleDowned(s, p, 0.3);
         s.cash -= took; s.inv = {}; s.hp = 15;
         for (let i = 0; i < 3; i++) dailyTick(s);
         p.result = { outcome: 'beaten', title: 'Left for dead', art: 'scene_loss',
@@ -921,7 +919,27 @@
     delete s.turf[d];
     note(s, `You lost ${DIST[d].name}.`, 'bad');
   }
-  G.closeFight = function (s) { if (s.pending && s.pending.result) { s.pending = null; if (s.hp <= 0 && !s.over) s.hp = 1; } };
+  G.closeFight = function (s) { if (s.pending && s.pending.result) { settleDowned(s, s.pending); s.pending = null; if (s.hp <= 0 && !s.over) s.hp = 1; } };
+  // after a fight, each crew member who went down pulls through (wounded) or doesn't
+  const SURVIVE = { won: 0.65, escaped: 0.5, bribed: 0.5, paid: 0.5, released: 0.5, robbed: 0.4, beaten: 0.35, busted: 0.4, dead: 0 };
+  function settleDowned(s, p, rate) {
+    if (!p || p.settled) return;
+    p.settled = true;
+    const odds = rate !== undefined ? rate : (SURVIVE[p.result && p.result.outcome] ?? 0.4);
+    for (const c of s.crew.filter(x => x.hp <= 0)) {
+      if (chance(odds)) { c.hp = Math.max(1, Math.round(c.maxHp * 0.15)); p.wounded = (p.wounded || []).concat(c.name); note(s, `${c.name} went down but pulled through.`); }
+      else { s.crew = s.crew.filter(x => x !== c); s.stats.crewLost++; p.fallen = (p.fallen || []).concat(c.name); note(s, `${c.name} didn't make it.`, 'bad'); }
+    }
+  }
+  // settle the downed crew as soon as a fight's result is known, so the result screen can say who made it
+  for (const k of ['fight', 'run', 'useItem', 'bribe', 'payDebt', 'surrender']) {
+    const f = G[k];
+    G[k] = function (s, ...args) {
+      const r = f(s, ...args), p = s.pending;
+      if (p && p.kind === 'fight' && p.result) settleDowned(s, p);
+      return r;
+    };
+  }
 
   // ---------- jobs, turf wars and bosses ----------
   function genJobs(s, dist) {

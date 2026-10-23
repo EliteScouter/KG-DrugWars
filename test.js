@@ -10,7 +10,8 @@ const finite = (s, where) => {
   for (const k of ['cash', 'bank', 'debt', 'hp', 'heat', 'rep', 'day']) check(Number.isFinite(s[k]), `${where}: ${k} is ${s[k]}`);
   check(s.cash >= 0, `${where}: cash went negative (${s.cash})`);
   check(s.bank >= 0, `${where}: bank went negative (${s.bank})`);
-  for (const c of s.crew) check(c.hp > 0 && c.hp <= c.maxHp, `${where}: crew hp ${c.hp}/${c.maxHp}`);
+  // crew can be down (0 hp) during a fight; once it's over everyone left is alive
+  for (const c of s.crew) check((where === 'fight' ? c.hp >= 0 : c.hp > 0) && c.hp <= c.maxHp, `${where}: crew hp ${c.hp}/${c.maxHp}`);
   for (const [id, h] of Object.entries(s.inv)) check(G.drug(id) && h.qty > 0 && Number.isFinite(h.cost), `${where}: bad inventory ${id}`);
 };
 
