@@ -342,17 +342,41 @@
     return out.sort((a, b) => b.block - a.block);
   }
   // who carries what: the best gear goes to the boss, then the crew in order
+  // who carries what: pieces you picked for someone (s.equip) go to them first; everyone on "auto"
+  // gets the best that's left, the boss first, then the crew in order
   G.loadout = function (s) {
-    const guns = rankWeapons(s), vests = rankArmor(s);
     const veh = (VEHICLE[s.vehicle].armor || 0);
     const squad = [{ id: 'boss', name: 'You', boss: true, hp: s.hp, maxHp: s.maxHp, acc: BOSS_ACC, art: 'char_player' }]
       .concat(s.crew.map(c => ({ id: c.id, name: c.name, role: c.role, hp: c.hp, maxHp: c.maxHp, acc: Math.min(0.95, c.acc + 0.03 * G.crewLevel(c)), art: G.ROLES[c.role].art, lvl: G.crewLevel(c) })));
-    squad.forEach((m, i) => {
-      m.weapon = guns[i] || WEAPON.fists;
-      m.armorItem = vests[i] || ARMOR.none;
-      m.armor = Math.min(0.75, m.armorItem.block + veh);
-    });
+    const equip = s.equip || {};
+    const handOut = (kind, ranked, none) => {
+      const left = ranked.slice(), field = kind === 'weapon' ? 'weapon' : 'armorItem';
+      for (const m of squad) {
+        const want = (equip[m.id] || {})[kind];
+        if (!want || want === 'auto') continue;
+        if (want === 'none') { m[field] = none; m[field + 'Set'] = true; continue; }
+        const i = left.findIndex(x => x.id === want);
+        if (i >= 0) { m[field] = left.splice(i, 1)[0]; m[field + 'Set'] = true; }
+      }
+      for (const m of squad) if (!m[field]) m[field] = left.shift() || none;
+    };
+    handOut('weapon', rankWeapons(s), WEAPON.fists);
+    handOut('armor', rankArmor(s), ARMOR.none);
+    for (const m of squad) m.armor = Math.min(0.75, m.armorItem.block + veh);
     return squad;
+  };
+  // pick a weapon or armor for someone ('auto' = best available, 'none' = go without)
+  G.setEquip = function (s, memberId, kind, id) {
+    if (memberId !== 'boss' && !s.crew.some(c => c.id === memberId)) return { ok: false };
+    if (!['weapon', 'armor'].includes(kind)) return { ok: false };
+    const own = kind === 'weapon' ? s.weapons : s.armors;
+    if (id !== 'auto' && id !== 'none' && !own[id]) return { ok: false, msg: 'You don\'t own that.' };
+    s.equip = s.equip || {};
+    const e = s.equip[memberId] || (s.equip[memberId] = {});
+    if (id === 'auto') delete e[kind]; else e[kind] = id;
+    // people who left the crew don't hold anything
+    for (const k of Object.keys(s.equip)) if (k !== 'boss' && !s.crew.some(c => c.id === k)) delete s.equip[k];
+    return { ok: true };
   };
   // rough fighting strength: damage per round times how much punishment they can take
   function sideStats(list, enemyArmor) {

@@ -528,10 +528,10 @@
       const low = m.hp / m.maxHp < 0.35, stars = c ? G.crewLevel(c) : 0;
       return `<div class="card member">${art(m.art, 'square icon')}
         <div><div class="role">${m.boss ? 'The boss · ' + esc(G.title(s).name) : esc(role.name)}${stars ? ` <span class="stars">${'★'.repeat(stars)}</span>` : ''}</div><div class="nm">${esc(m.name)}</div>
-          <div class="gear">${esc(m.weapon.name)} · ${esc(m.armorItem.name)}${c ? ` · ${M(c.wage)}/day` : ''}</div>
+          <div class="gear">${esc(m.weapon.name)}${m.weaponSet ? ' ✓' : ''} · ${esc(m.armorItem.name)}${m.armorItemSet ? ' ✓' : ''}${c ? ` · ${M(c.wage)}/day` : ''}</div>
           ${role ? `<div class="gear">${esc(role.perk)}</div>` : ''}
           <div class="hpbar"><i class="${low ? 'low' : ''}" style="width:${pct(Math.max(0, m.hp) / m.maxHp)}"></i></div></div>
-        ${c ? `<button class="btn small ghost" data-fire="${c.id}">Fire</button>` : ''}</div>`;
+        <div class="col"><button class="btn small cyan" data-gearfor="${m.id}">Gear</button>${c ? `<button class="btn small ghost" data-fire="${c.id}">Fire</button>` : ''}</div></div>`;
     }).join('');
     const guns = Object.entries(s.weapons).map(([id, n]) => `${n}× ${G.weapon(id).name}`).concat(Object.entries(s.armors).map(([id, n]) => `${n}× ${G.armor(id).name}`));
     const items = Object.entries(s.items).map(([id, n]) => `${n}× ${G.item(id).name}`);
@@ -546,10 +546,36 @@
         <p class="note" style="margin-top:8px">Wages come out of your cash (then the bank) every morning. Unpaid crew walk. Crew who win fights earn stars: more health and better aim.</p></div></div>`;
   }
 
+  // pick a weapon and armor for one person
+  function openEquip(id) {
+    const squad = G.loadout(s), m = squad.find(x => x.id === id);
+    if (!m) return closeModal();
+    const want = (s.equip && s.equip[id]) || {};
+    const holders = (kind, itemId) => squad.filter(x => x.id !== id && (kind === 'weapon' ? x.weapon : x.armorItem).id === itemId).length;
+    const row = (kind, item, own) => {
+      const on = want[kind] === item.id, used = holders(kind, item.id);
+      const stat = kind === 'weapon' ? `Damage <b>${item.dmg}${item.shots > 1 ? '×' + item.shots : ''}</b>${item.splash ? ` · hits <b>${item.splash + 1}</b>` : ''} · Aim <b>${pct(item.acc)}</b>` : `Stops <b>${pct(item.block)}</b>`;
+      return `<button class="pick ${on ? 'on' : ''}" data-equip="${id}:${kind}:${item.id}">${art(item.art, 'square mini')}
+        <span><b>${esc(item.name)}</b><small>${stat} · own ${own}${used ? ` · ${used} with others` : ''}</small></span></button>`;
+    };
+    const score = (kind, x) => (kind === 'weapon' ? x.dmg * x.shots * x.acc * (1 + (x.splash || 0) * 0.6) : x.block);
+    const list = kind => {
+      const owned = Object.entries(kind === 'weapon' ? s.weapons : s.armors).map(([k, n]) => [kind === 'weapon' ? G.weapon(k) : G.armor(k), n])
+        .sort((a, b) => score(kind, b[0]) - score(kind, a[0]));
+      const auto = `<button class="pick ${!want[kind] ? 'on' : ''}" data-equip="${id}:${kind}:auto"><span><b>Auto</b><small>The best one nobody else is holding</small></span></button>`;
+      const none = `<button class="pick ${want[kind] === 'none' ? 'on' : ''}" data-equip="${id}:${kind}:none"><span><b>${kind === 'weapon' ? 'Bare fists' : 'Nothing'}</b><small>Leave it for someone else</small></span></button>`;
+      return auto + owned.map(([item, n]) => row(kind, item, n)).join('') + none;
+    };
+    modal(`<div class="sheet-h">${art(m.art, 'square icon')}<div><h2>${esc(m.name)}</h2><small>Now: ${esc(m.weapon.name)} · ${esc(m.armorItem.name)}</small></div></div>
+      <div class="help"><h3>Weapon</h3><div class="picks">${list('weapon')}</div><h3>Armor</h3><div class="picks">${list('armor')}</div>
+      <p class="note">Picking something another person holds moves it to ${esc(m.name)}; they get the best piece that's left. ✓ marks gear you picked.</p></div>
+      <div class="m-actions"><button class="btn ghost" data-close>Done</button></div>`);
+  }
+
   // ---------- jobs ----------
   const oddsCache = {};
   function jobOdds(j) {
-    const key = `${j.id}|${s.hp}|${s.crew.map(c => c.id + c.hp + ':' + (c.wins || 0)).join()}|${JSON.stringify(s.weapons)}|${JSON.stringify(s.armors)}|${s.vehicle}`;
+    const key = `${j.id}|${s.hp}|${s.crew.map(c => c.id + c.hp + ':' + (c.wins || 0)).join()}|${JSON.stringify(s.weapons)}|${JSON.stringify(s.armors)}|${JSON.stringify(s.equip || {})}|${s.vehicle}`;
     if (oddsCache[j.id] && oddsCache[j.id].key === key) return oddsCache[j.id].v;
     const v = G.odds(s, G.jobFoes(s, j), 120);
     oddsCache[j.id] = { key, v };
@@ -803,6 +829,8 @@
     if (d.complete) return act(() => G.complete(s, d.complete));
     if (d.put) { act(() => G.stashPut(s, d.put, Infinity)); return openStash(); }
     if (d.take) { act(() => G.stashTake(s, d.take, Infinity)); return openStash(); }
+    if (d.gearfor) return openEquip(d.gearfor);
+    if (d.equip) { const [who, kind, id] = d.equip.split(':'); const r = G.setEquip(s, who, kind, id); if (!r.ok) return said(r); persist(); renderTab(); return openEquip(who); }
     if (d.fire) { if (confirm('Fire this crew member? They won\'t come back.')) act(() => G.fire(s, d.fire)); return; }
     if (d.job) {
       const j = G.jobsHere(s).find(x => x.id === d.job);
