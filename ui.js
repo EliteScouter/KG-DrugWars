@@ -405,7 +405,7 @@
     if (id === 'fixer') {
       const list = G.offersHere(s);
       const rows = list.length ? list.map(o => `<div class="item contract"><div><div class="nm">${esc(o.title)}</div><div class="st">${esc(o.blurb || '')}</div>
-        <div class="st">Pays <b>${M(o.pay)}</b> · ${o.type === 'smuggle' ? `hold ${o.hold} days, deliver within ${o.days - o.hold}` : `${o.days} days`} · +rep</div></div>${buyBtn(`data-accept="${o.id}"`, 0, s.contracts.length < 3, 'Take it', 'cyan')}</div>`).join('') : '<p class="note">No work right now. New contracts every few days.</p>';
+        <div class="st">Pays <b>${M(o.pay)}</b> · ${o.type === 'smuggle' ? `hold ${o.hold} days, deliver within ${o.days - o.hold}` : `${o.days} days`} · +rep</div>${o.hot ? '<div class="st"><span class="lock-tag hot">NO RUNNING · NO BRIBES · FIGHT ONLY</span></div>' : ''}</div>${buyBtn(`data-accept="${o.id}"`, 0, s.contracts.length < 3, 'Take it', 'cyan')}</div>`).join('') : '<p class="note">No work right now. New contracts every few days.</p>';
       return `<div class="card svc">${svcHead('fixer', true)}<div class="svc-body"><p class="note">Active contracts: ${s.contracts.length}/3 (see Jobs). Miss the deadline and your rep takes the hit.</p><div class="items">${rows}</div></div></div>`;
     }
     if (id === 'supply') {

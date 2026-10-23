@@ -487,17 +487,17 @@
   function rollEncounter(s) {
     const dist = DIST[s.loc], sc = G.scale(s);
     const carrying = G.carried(s) > 0;
-    const smuggling = G.packageSpace(s) > 0;
+    const smuggling = G.packageSpace(s) > 0, hot = G.hotPackage(s);
     if (s.debt > 0 && s.day > s.debtDue && chance(0.45)) return startVinnie(s);
     if (s.manhunt > 0 && chance(0.55)) return startCops(s, 'manhunt');
     const f = dist.faction;
     if (s.turf[s.loc] && !s.beaten[f] && chance(0.1)) return startRetaliation(s);
     const ramp = Math.min(1, 0.45 + s.day / 25); // the first couple of weeks are gentler
-    const bad = (0.1 + dist.risk * 0.25 + s.heat / 220 + Math.min(0.12, s.day / 500) + (smuggling ? 0.12 : 0)) * ramp;
+    const bad = (0.1 + dist.risk * 0.25 + s.heat / 220 + Math.min(0.12, s.day / 500) + (smuggling ? 0.12 : 0) + (hot ? 0.15 : 0)) * ramp;
     const worth = G.drugValue(s) + s.cash;
     if (chance(bad)) {
       const type = weighted([
-        ['cops', dist.police * (0.3 + s.heat / 30) * (carrying ? 1 : 0.5) + (smuggling ? 0.3 : 0)],
+        ['cops', dist.police * (0.3 + s.heat / 30) * (carrying ? 1 : 0.5) + (smuggling ? 0.3 : 0) + (hot ? 0.4 : 0)],
         ['muggers', dist.risk * 1.1 * (s.cash > 300 ? 1 : 0.3) * (s.crew.length < 2 ? 1 : 0.15)],
         ['rival', !s.beaten[f] && (worth > 4000 || s.rep >= 5) ? dist.gang * (0.45 + s.rep / 45) * (carrying || s.rep > 10 ? 1 : 0.4) * (s.turf[s.loc] ? 0.3 : 1) : 0],
       ]);
@@ -515,6 +515,7 @@
         s.pending = fightPending(s, { reason: 'rival', faction: f, title: `${G.FACTIONS[f].name} want a word`,
           text: `You're dealing on ${G.FACTIONS[f].name} turf. ${foes.length} of them block the street.`,
           foes, canRun: true, canGive: carrying || s.cash > 0, giveLabel: 'Pay the street tax' });
+        if (hot) cornered(s.pending, 'They know what you\'re carrying. No running, no paying them off.');
         return;
       }
     }
@@ -538,7 +539,14 @@
     };
     s.pending = fightPending(s, { reason: 'cops', faction: tier.faction, title: why === 'manhunt' ? 'Manhunt! ' + titles[tier.faction] : titles[tier.faction],
       text: texts[tier.faction], foes, canRun: true, bribe, canSurrender: true, escapeCap: tier.escapeCap });
+    if (G.hotPackage(s)) cornered(s.pending, 'You\'re carrying a hot package: nobody takes a bribe for this, there\'s nowhere to run, and giving up isn\'t an option.');
   }
+  // carrying a hot package: fight or nothing
+  function cornered(p, why) {
+    p.canRun = false; p.bribe = 0; p.canSurrender = false; p.canGive = false; p.hot = true;
+    p.text += ' ' + why;
+  }
+  G.hotPackage = s => s.contracts.some(c => c.type === 'smuggle' && c.hot && !c.done && !c.failed);
   function startVinnie(s) {
     const late = s.day - s.debtDue;
     const foes = makeFoes(s, 'vinnie', clamp(0.8 - late / 40, 0.3, 0.8), { min: 2 });
@@ -923,7 +931,7 @@
       const drug = j.premium ? pick(['heroin', 'cocaine', 'opium']) : pick(G.DRUGS.slice(0, 8)).id;
       const faction = j.faction || dist.faction, n = ri(j.size[0], j.size[1]) + Math.floor((sc - 1) * 2);
       return { id: 'j' + (s.nextId++), type: j.id, faction, foes: fixedFoes(s, faction, n, j.power),
-               cash: nice(ri(j.cash[0], j.cash[1]) * (1 + (sc - 1) * 0.4) * (1 + s.rep / 60)),
+               cash: nice(ri(j.cash[0], j.cash[1]) * (1 + (sc - 1) * 0.8) * (1 + s.rep / 30)),
                drug: j.drugs[1] ? drug : null, drugQty: j.drugs[1] ? Math.round(ri(j.drugs[0], j.drugs[1]) * (1 + s.rep / 80)) : 0, done: false };
     });
   }
@@ -988,13 +996,18 @@
           title: `${qty} ${d.name} to ${to.name}`, blurb: `Bring ${qty} ${d.name} to a buyer in ${to.name}. Pays well above street price.` });
       } else if (type === 'smuggle') {
         // you have to sit on it: the buyer only takes it after `hold` days, then you have `window` days to get it there
-        const size = ri(15, 45), hold = ri(2, 5), window = 3 + (to.days || 0);
-        out.push({ id: 'k' + (s.nextId++), type, size, to: to.id, hold, days: hold + window, pay: nice((20000 + s.rep * 9000) * rnd(0.8, 1.3) * G.scale(s) * fixer * (1 + hold * 0.15)), rep: 3,
-          title: `A sealed package for ${to.name}`, blurb: `Takes ${size} space. Keep it hidden for ${hold} days, then deliver it to ${to.name} within ${window} days. Cops look harder while you carry it, and getting busted loses it.` });
+        const hot = s.rep >= 15 && chance(0.35);
+        const size = ri(15, 45), hold = hot ? ri(10, 14) : ri(3, 6), window = (hot ? 4 : 3) + (to.days || 0);
+        const pay = nice((10000 + s.rep * 2000) * rnd(0.8, 1.2) * G.scale(s) * fixer * (1 + hold * 0.1) * (hot ? 2.5 : 1));
+        out.push({ id: 'k' + (s.nextId++), type, size, to: to.id, hold, hot, days: hold + window, pay, rep: hot ? 6 : 3,
+          title: hot ? `🔥 A hot package for ${to.name}` : `A sealed package for ${to.name}`,
+          blurb: hot
+            ? `Takes ${size} space. Keep it for ${hold} days, then deliver it to ${to.name} within ${window} days. Everyone wants it: while you carry it, cops and gangs come at you more often, and you can't run, bribe or surrender. You fight. Getting busted loses it.`
+            : `Takes ${size} space. Keep it hidden for ${hold} days, then deliver it to ${to.name} within ${window} days. Cops look harder while you carry it, and getting busted loses it.` });
       } else {
         const f = G.FACTIONS[to.faction];
         const target = `${pick(G.FIRST)} ${pick(['the Butcher', 'Scar', 'Big Lou', 'the Snake', 'Two-Guns'])}`;
-        out.push({ id: 'k' + (s.nextId++), type, to: to.id, faction: to.faction, days, target, pay: nice((30000 + s.rep * 12000) * rnd(0.9, 1.3) * G.scale(s) * fixer), rep: 4,
+        out.push({ id: 'k' + (s.nextId++), type, to: to.id, faction: to.faction, days, target, pay: nice((20000 + s.rep * 5000) * rnd(0.9, 1.3) * G.scale(s) * fixer), rep: 4,
           title: `Take out ${target} in ${to.name}`, blurb: `${target} runs a ${f.name} crew in ${to.name}. The job shows up there.` });
       }
     }
