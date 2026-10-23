@@ -168,17 +168,30 @@
   G.price = (s, id) => { const b = basePrice(s, id); return b === null ? null : Math.max(1, Math.round(b * Math.exp(-press(s, id)))); };
   G.sellPrice = (s, id) => { const p = G.price(s, id); return p === null ? null : Math.round(p * sellBonus(s)); };
   // what buying or selling q units costs or pays, all together
+  // however hard you push, a price goes no higher than 2.5x and no lower than a quarter of today's street price
+  const P_MIN = -Math.log(2.5), P_MAX = Math.log(4);
   G.quoteBuy = function (s, id, q) {
     const b = basePrice(s, id), D = G.depth(s, id), p0 = press(s, id);
     if (b === null || q <= 0) return { total: 0, after: G.price(s, id) };
-    const p1 = p0 - q / D;
-    return { total: Math.max(q, Math.round(b * D * (Math.exp(-p1) - Math.exp(-p0)))), after: Math.round(b * Math.exp(-p1)) };
+    const curved = Math.max(0, Math.min(q, (p0 - P_MIN) * D)); // units bought before the price hits its ceiling
+    const p1 = p0 - curved / D;
+    const total = b * D * (Math.exp(-p1) - Math.exp(-p0)) + (q - curved) * b * 2.5;
+    return { total: Math.max(q, Math.round(total)), after: Math.round(b * Math.exp(-Math.max(P_MIN, p0 - q / D))), press: Math.max(P_MIN, p0 - q / D) };
   };
   G.quoteSell = function (s, id, q) {
     const b = basePrice(s, id), D = G.depth(s, id), p0 = press(s, id);
     if (b === null || q <= 0) return { total: 0, after: G.sellPrice(s, id) };
-    const p1 = p0 + q / D;
-    return { total: Math.round(b * D * (Math.exp(-p0) - Math.exp(-p1)) * sellBonus(s)), after: Math.round(b * Math.exp(-p1) * sellBonus(s)) };
+    const curved = Math.max(0, Math.min(q, (P_MAX - p0) * D)); // units sold before the price hits its floor
+    const p1 = p0 + curved / D;
+    const total = (b * D * (Math.exp(-p0) - Math.exp(-p1)) + (q - curved) * b * 0.25) * sellBonus(s);
+    return { total: Math.round(total), after: Math.round(b * Math.exp(-Math.min(P_MAX, p0 + q / D)) * sellBonus(s)), press: Math.min(P_MAX, p0 + q / D) };
+  };
+  // a sensible amount to buy here: up to where the price has gone up about 40% (or hits the normal street price)
+  G.bestBuy = function (s, id) {
+    const max = G.maxBuy(s, id), p = G.price(s, id);
+    if (!max || !p) return 0;
+    const d = DRUG[id], target = Math.max(p * 1.15, Math.min(p * 1.4, mid(d)));
+    return Math.max(1, Math.min(max, Math.floor(G.depth(s, id) * Math.log(target / p))));
   };
   // the most you can sell here before the next one goes for less than you paid (0 = selling here loses money)
   G.bestSell = function (s, id) {
@@ -192,11 +205,11 @@
   G.maxBuy = function (s, id) {
     const b = basePrice(s, id);
     if (b === null || !G.canTrade(s, id)) return 0;
-    const D = G.depth(s, id), p0 = press(s, id);
-    const byCash = Math.floor(D * (p0 + Math.log(s.cash / (b * D) + Math.exp(-p0))) + 1e-9);
-    let q = Math.max(0, Math.min(G.space(s), byCash));
-    while (q > 0 && G.quoteBuy(s, id, q).total > s.cash) q--;
-    return q;
+    // the most you can afford (and carry), found by halving
+    let lo = 0, hi = G.space(s);
+    if (G.quoteBuy(s, id, hi).total <= s.cash) return hi;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (G.quoteBuy(s, id, m).total <= s.cash) lo = m; else hi = m; }
+    return lo;
   };
   G.buy = function (s, id, qty) {
     qty = Math.floor(qty);
@@ -207,7 +220,7 @@
     if (q.total > s.cash) return { ok: false, msg: 'Not enough cash.' };
     s.cash -= q.total;
     addInv(s.inv, id, qty, q.total);
-    setPress(s, id, press(s, id) - qty / G.depth(s, id));
+    setPress(s, id, q.press);
     s.stats.bought += q.total;
     addHeat(s, q.total, 0.35, DRUG[id]);
     return { ok: true, msg: `Bought ${qty} ${DRUG[id].name} for ${G.money(q.total)}.` };
@@ -221,7 +234,7 @@
     const q = G.quoteSell(s, id, qty);
     const paid = takeInv(s.inv, id, qty);
     s.cash += q.total;
-    setPress(s, id, press(s, id) + qty / G.depth(s, id));
+    setPress(s, id, q.press);
     s.stats.sold += q.total;
     addHeat(s, q.total, 1, DRUG[id]);
     const profit = Math.round(q.total - paid);

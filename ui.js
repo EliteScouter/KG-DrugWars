@@ -259,8 +259,8 @@
     const max = mode === 'buy' ? G.maxBuy(s, id) : (h ? h.qty : 0);
     if (!max) return;
     const avg = h && h.qty ? h.cost / h.qty : 0;
-    const best = mode === 'sell' ? G.bestSell(s, id) : max;
-    let q = mode === 'sell' ? Math.max(1, best || 1) : max; // selling starts at the best amount, not everything
+    const best = mode === 'sell' ? G.bestSell(s, id) : G.bestBuy(s, id);
+    let q = Math.max(1, best || 1); // start at a sensible amount, not everything
     const unit = mode === 'buy' ? G.price(s, id) : G.sellPrice(s, id);
     modal(`<div class="sheet-h">${art(d.art, 'square icon')}<div><h2>${mode === 'buy' ? 'Buy' : 'Sell'} ${esc(d.name)}</h2><small>${M(unit)} for the first one${mode === 'sell' && avg ? ` · you paid ${M(Math.round(avg))} each` : ''}</small></div></div>
       <div class="qty">
@@ -268,7 +268,7 @@
         <div class="qty-sub" id="qs"></div>
         <div class="qty-sub small" id="qs2"></div>
         <input type="range" id="qr" min="1" max="${max}" value="${q}">
-        <div class="quick"><button class="btn small" data-q="1">1</button><button class="btn small" data-q="10">10</button><button class="btn small" data-q="half">Half</button>${mode === 'sell' && best && best < max ? `<button class="btn small cyan" data-q="best">Best ${best}</button>` : ''}<button class="btn small" data-q="max">Max</button></div>
+        <div class="quick"><button class="btn small" data-q="1">1</button><button class="btn small" data-q="10">10</button><button class="btn small" data-q="half">Half</button>${best && best < max ? `<button class="btn small cyan" data-q="best">Best ${best}</button>` : ''}<button class="btn small" data-q="max">Max</button></div>
       </div>
       <div class="m-actions"><button class="btn big ${mode === 'buy' ? 'green' : 'red'}" id="qok"></button><button class="btn ghost" data-close>Cancel</button></div>`);
     const upd = () => {
@@ -281,7 +281,10 @@
       $('#qs').innerHTML = sub;
       const moved = Math.abs(quote.after - unit) / unit;
       const losing = mode === 'sell' && avg && quote.total < avg * q;
-      $('#qs2').innerHTML = losing
+      const overpaying = mode === 'buy' && q > best && each > unit * 1.4;
+      $('#qs2').innerHTML = overpaying
+        ? `<b class="profit down">You're overpaying:</b> buying this many pushes the price to ${M(quote.after)}, ${M(each)} each on average. Buy about ${best} here and the rest somewhere else.`
+        : losing
         ? `<b class="profit down">This many loses money here.</b> ${best ? `Sell ${best} or fewer, and take the rest to another district or come back in a few days.` : 'The price here is below what you paid. Sell somewhere else.'}`
         : `${mode === 'buy' ? 'Price after' : 'Street price after'}: <b class="${moved > 0.25 ? 'warn' : ''}">${M(quote.after)}</b>${moved > 0.25 ? ' · you\'re flooding the market' : ''}${mode === 'buy' ? ` · space left <b>${G.space(s) - q}</b>` : ''}`;
       $('#qok').textContent = `${mode === 'buy' ? 'Buy' : 'Sell'} ${q}`;
