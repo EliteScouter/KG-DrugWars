@@ -234,7 +234,10 @@
       }
       const avg = h && h.qty ? h.cost / h.qty : 0;
       const profit = h && sp && avg ? Math.round((sp - avg) / avg * 100) : null;
-      const own = h ? `Own <b>${h.qty}</b>${avg ? ` · paid ${SH(avg)}` : ''}${profit !== null ? ` · <span class="profit ${profit >= 0 ? 'up' : 'down'}">${profit >= 0 ? '+' : ''}${profit}%</span>` : ''}` : 'Own 0';
+      // how many sell at a profit here before the price drops below what you paid
+      const best = h && ok && sp ? G.bestSell(s, d.id) : 0;
+      const hint = h && ok && sp ? (best >= h.qty ? '' : best ? ` · <b class="warn">sell ~${best} here</b>` : ' · <b class="warn">don\'t sell here</b>') : '';
+      const own = h ? `Own <b>${h.qty}</b>${avg ? ` · paid ${SH(avg)}` : ''}${profit !== null ? ` · <span class="profit ${profit >= 0 ? 'up' : 'down'}">${profit >= 0 ? '+' : ''}${profit}%</span>` : ''}${hint}` : 'Own 0';
       const canBuy = ok && p && G.maxBuy(s, d.id) > 0, canSell = ok && p && h;
       return `<div class="card drug ${p && ok ? '' : 'na'}">
         ${art(d.art, 'icon')}
@@ -255,8 +258,9 @@
     const d = G.drug(id), h = s.inv[id];
     const max = mode === 'buy' ? G.maxBuy(s, id) : (h ? h.qty : 0);
     if (!max) return;
-    let q = max;
     const avg = h && h.qty ? h.cost / h.qty : 0;
+    const best = mode === 'sell' ? G.bestSell(s, id) : max;
+    let q = mode === 'sell' ? Math.max(1, best || 1) : max; // selling starts at the best amount, not everything
     const unit = mode === 'buy' ? G.price(s, id) : G.sellPrice(s, id);
     modal(`<div class="sheet-h">${art(d.art, 'square icon')}<div><h2>${mode === 'buy' ? 'Buy' : 'Sell'} ${esc(d.name)}</h2><small>${M(unit)} for the first one${mode === 'sell' && avg ? ` · you paid ${M(Math.round(avg))} each` : ''}</small></div></div>
       <div class="qty">
@@ -264,7 +268,7 @@
         <div class="qty-sub" id="qs"></div>
         <div class="qty-sub small" id="qs2"></div>
         <input type="range" id="qr" min="1" max="${max}" value="${q}">
-        <div class="quick"><button class="btn small" data-q="1">1</button><button class="btn small" data-q="10">10</button><button class="btn small" data-q="half">Half</button><button class="btn small" data-q="max">Max</button></div>
+        <div class="quick"><button class="btn small" data-q="1">1</button><button class="btn small" data-q="10">10</button><button class="btn small" data-q="half">Half</button>${mode === 'sell' && best && best < max ? `<button class="btn small cyan" data-q="best">Best ${best}</button>` : ''}<button class="btn small" data-q="max">Max</button></div>
       </div>
       <div class="m-actions"><button class="btn big ${mode === 'buy' ? 'green' : 'red'}" id="qok"></button><button class="btn ghost" data-close>Cancel</button></div>`);
     const upd = () => {
@@ -276,12 +280,15 @@
       if (mode === 'sell' && avg) { const pr = Math.round(quote.total - avg * q); sub += ` · <b class="profit ${pr >= 0 ? 'up' : 'down'}">${pr >= 0 ? '+' : ''}${M(pr)}</b>`; }
       $('#qs').innerHTML = sub;
       const moved = Math.abs(quote.after - unit) / unit;
-      $('#qs2').innerHTML = `${mode === 'buy' ? 'Price after' : 'Street price after'}: <b class="${moved > 0.25 ? 'warn' : ''}">${M(quote.after)}</b>${moved > 0.25 ? ' · you\'re flooding the market' : ''}${mode === 'buy' ? ` · space left <b>${G.space(s) - q}</b>` : ''}`;
+      const losing = mode === 'sell' && avg && quote.total < avg * q;
+      $('#qs2').innerHTML = losing
+        ? `<b class="profit down">This many loses money here.</b> ${best ? `Sell ${best} or fewer, and take the rest to another district or come back in a few days.` : 'The price here is below what you paid. Sell somewhere else.'}`
+        : `${mode === 'buy' ? 'Price after' : 'Street price after'}: <b class="${moved > 0.25 ? 'warn' : ''}">${M(quote.after)}</b>${moved > 0.25 ? ' · you\'re flooding the market' : ''}${mode === 'buy' ? ` · space left <b>${G.space(s) - q}</b>` : ''}`;
       $('#qok').textContent = `${mode === 'buy' ? 'Buy' : 'Sell'} ${q}`;
     };
     $('#qr').oninput = e => { q = +e.target.value; upd(); };
     document.querySelectorAll('[data-q]').forEach(b => b.onclick = () => {
-      const v = b.dataset.q; q = v === 'max' ? max : v === 'half' ? Math.max(1, Math.floor(max / 2)) : Math.min(max, +v); upd();
+      const v = b.dataset.q; q = v === 'max' ? max : v === 'best' ? best : v === 'half' ? Math.max(1, Math.floor(max / 2)) : Math.min(max, +v); upd();
     });
     $('#qok').onclick = () => { closeModal(); act(() => mode === 'buy' ? G.buy(s, id, q) : G.sell(s, id, q)); };
     upd();

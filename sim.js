@@ -180,6 +180,15 @@
     const p1 = p0 + q / D;
     return { total: Math.round(b * D * (Math.exp(-p0) - Math.exp(-p1)) * sellBonus(s)), after: Math.round(b * Math.exp(-p1) * sellBonus(s)) };
   };
+  // the most you can sell here before the next one goes for less than you paid (0 = selling here loses money)
+  G.bestSell = function (s, id) {
+    const h = s.inv[id], sp = G.sellPrice(s, id);
+    if (!h || !sp || !G.canTrade(s, id)) return 0;
+    const avg = h.cost / h.qty;
+    if (!avg) return h.qty; // it was free: every sale is profit
+    if (sp <= avg) return 0;
+    return Math.max(1, Math.min(h.qty, Math.floor(G.depth(s, id) * Math.log(sp / avg))));
+  };
   G.maxBuy = function (s, id) {
     const b = basePrice(s, id);
     if (b === null || !G.canTrade(s, id)) return 0;
