@@ -32,7 +32,7 @@
   G.coat = id => COAT[id]; G.vehicle = id => VEHICLE[id]; G.front = id => FRONT[id]; G.job = id => JOB[id]; G.crate = id => CRATE[id]; G.lux = id => LUX[id];
 
   // the city gets meaner the longer you last
-  G.scale = s => 1 + (s.day - 1) / 45;
+  G.scale = s => Math.min(5, 1 + (s.day - 1) / 50);
 
   // ---------- a new run ----------
   G.newMeta = () => ({ season: G.SEASON, bestNet: 0, bestDays: 0, runs: 0, deaths: 0, retired: 0, kings: 0 });
@@ -232,7 +232,7 @@
   // dealing where the cops look gets you noticed; the heavy stuff gets you noticed faster
   function addHeat(s, value, weight, drug) {
     const tier = drug ? 1 + drug.rep / 40 : 1;
-    const gain = DIST[s.loc].police * weight * tier * 8 * (1 - Math.exp(-value / 150000)) * (1 - G.stealth(s));
+    const gain = DIST[s.loc].police * weight * tier * 5 * (1 - Math.exp(-value / 200000)) * (1 - G.stealth(s));
     s.heat = clamp(s.heat + gain, 0, 100);
   }
 
@@ -263,7 +263,7 @@
     for (const c of s.crew) c.hp = Math.min(c.maxHp, c.hp + crewHeal);
     // markets recover from what you did to them
     for (const d of Object.keys(s.press)) {
-      for (const id of Object.keys(s.press[d])) { s.press[d][id] *= 0.55; if (Math.abs(s.press[d][id]) < 0.005) delete s.press[d][id]; }
+      for (const id of Object.keys(s.press[d])) { s.press[d][id] *= 0.45; if (Math.abs(s.press[d][id]) < 0.005) delete s.press[d][id]; }
       if (!Object.keys(s.press[d]).length) delete s.press[d];
     }
     // a hot boss has hot safehouses
@@ -296,6 +296,7 @@
     if (dist.services.includes('recruit') && (!s.recruits[s.loc] || s.recruits[s.loc].day !== s.day)) s.recruits[s.loc] = { day: s.day, list: genRecruits(s, 3) };
     if ((dist.services.includes('guns') || dist.services.includes('blackmarket')) && (!s.shops[s.loc] || s.shops[s.loc].day !== s.day)) s.shops[s.loc] = genShop(s);
     if (dist.services.includes('fixer') && (!s.offers[s.loc] || s.day - s.offers[s.loc].day >= 3)) s.offers[s.loc] = { day: s.day, list: genOffers(s) };
+    if (!quiet && contractArrival(s)) return;
     if (!quiet) rollEncounter(s);
   }
 
@@ -623,6 +624,8 @@
       else { s.heat = clamp(s.heat + 15, 0, 100); gainRep(s, 2); msg = 'You\'re on the front page. Your rep went up, and so did the heat.'; tone = 'bad'; }
     } else if (p.id === 'cash') {
       s.cash += d.amt; msg = `+${G.money(d.amt)}.`;
+    } else if (p.id === 'contract' && choice === 'deliver') {
+      msg = G.complete(s, d.contract).msg || '';
     }
     s.pending = null;
     if (msg) note(s, msg, tone);
@@ -751,8 +754,16 @@
       p.result = { outcome: 'released', title: 'Clean', text: 'They pat you down, find nothing and let you walk. "We\'ll be seeing you."' };
       return { ok: true };
     }
-    let fine = Math.round(Math.min(s.cash, s.cash * 0.4 + drugs * 80));
-    let days = Math.min(12, 1 + Math.floor(drugs / 40) + Math.floor(s.heat / 25));
+    if (p.faction === 'beat' && s.hp > 0) {
+      // a patrol car: they take a cut of the product and look the other way
+      const lost = [];
+      for (const id of Object.keys(s.inv)) { const q = Math.ceil(s.inv[id].qty * 0.4); takeInv(s.inv, id, q); lost.push(`${q} ${DRUG[id].name}`); }
+      s.heat = clamp(s.heat + 5, 0, 100);
+      p.result = { outcome: 'robbed', title: 'Shaken down', text: `The officers "confiscate" ${lost.join(', ')} and let you go. Nobody files a report.` };
+      return { ok: true };
+    }
+    let fine = Math.round(Math.min(s.cash, s.cash * 0.15 + drugs * 50));
+    let days = Math.min(10, 1 + Math.floor(drugs / 80) + Math.floor(s.heat / 30));
     if (s.judge) { fine = Math.round(fine / 2); days = Math.ceil(days / 2); }
     s.inv = {}; s.cash -= fine;
     s.heat = 15; s.manhunt = 0; s.stats.busts++;
@@ -774,6 +785,15 @@
     if (s.hp <= 0 && !s.crew.length) {
       if (p.reason === 'cops' && p.faction !== 'feds') { s.hp = 1; return busted(s, 'You wake up in handcuffs.'); }
       s.stats.fightsLost++;
+      // half the time they leave you for dead: you lose what you carried and wake up in the hospital
+      if (p.faction !== 'feds' && chance(0.5)) {
+        const took = Math.round(s.cash * 0.3);
+        s.cash -= took; s.inv = {}; s.hp = 15;
+        for (let i = 0; i < 3; i++) dailyTick(s);
+        p.result = { outcome: 'beaten', title: 'Left for dead', art: 'scene_loss',
+          text: `${G.FACTIONS[p.faction].name} took everything you carried and ${G.money(took)}, and left you in the gutter. You wake up three days later at Mercy General.` };
+        return { ok: true };
+      }
       p.result = { outcome: 'dead', title: 'WASTED', text: `${G.FACTIONS[p.faction].name} left you in the street on day ${s.day}.`, art: 'scene_wasted' };
       endRun(s, 'dead');
       return { ok: true, dead: true };
@@ -961,6 +981,23 @@
   };
   // contracts you can finish right here
   G.contractsHere = s => s.contracts.filter(c => !c.done && c.to === s.loc && c.type !== 'hit');
+  // arriving where a contract is due: a package pays at once; a delivery asks; a hit points you to the Jobs tab
+  function contractArrival(s) {
+    const c = s.contracts.find(x => !x.done && x.to === s.loc);
+    if (!c) return false;
+    if (c.type === 'smuggle') {
+      const r = G.complete(s, c.id);
+      s.pending = { kind: 'event', id: 'contract', art: 'char_fixer', title: 'Package delivered', text: `A man in a parked car takes the package without a word. ${r.msg}`, data: {}, choices: [{ id: 'ok', label: 'Nice' }] };
+    } else if (c.type === 'deliver') {
+      const have = s.inv[c.drug] ? s.inv[c.drug].qty : 0;
+      s.pending = { kind: 'event', id: 'contract', art: 'char_fixer', title: 'Your buyer is here',
+        text: have >= c.qty ? `The Fixer's buyer wants ${c.qty} ${DRUG[c.drug].name} for ${G.money(c.pay)}.` : `The buyer wants ${c.qty} ${DRUG[c.drug].name} for ${G.money(c.pay)}, but you only have ${have}. Buy more here or come back before day ${c.until + 1}.`,
+        data: { contract: c.id }, choices: have >= c.qty ? [{ id: 'deliver', label: `Hand over ${c.qty} (+${G.money(c.pay)})` }, { id: 'later', label: 'Not yet' }] : [{ id: 'later', label: 'OK' }] };
+    } else {
+      s.pending = { kind: 'event', id: 'contract', art: 'job_hit', title: 'Your target is here', text: `${c.target} is in ${DIST[s.loc].name}. The hit is on your Jobs tab, worth ${G.money(c.pay)}.`, data: {}, choices: [{ id: 'ok', label: 'Got it' }] };
+    }
+    return true;
+  }
   G.complete = function (s, id) {
     const c = s.contracts.find(x => x.id === id);
     if (!c || c.to !== s.loc || c.type === 'hit') return { ok: false };
@@ -980,7 +1017,7 @@
     return Array.from({ length: n }, () => {
       const role = pick(roles), r = G.ROLES[role];
       const hp = ri(r.hp[0], r.hp[1]);
-      const wage = roundTo(ri(r.wage[0], r.wage[1]) * (1 + (G.scale(s) - 1) * 0.3) * (1 + s.rep / 50), 10);
+      const wage = roundTo(ri(r.wage[0], r.wage[1]) * (1 + (G.scale(s) - 1) * 0.1) * (1 + s.rep / 120), 10);
       return { id: 'c' + (s.nextId++), name: `${pick(G.FIRST)} "${pick(G.NICK)}"`, role, hp, maxHp: hp,
                acc: Math.round(rnd(r.acc[0], r.acc[1]) * 100) / 100, wage, fee: wage * 3, wins: 0 };
     });

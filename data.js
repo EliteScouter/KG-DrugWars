@@ -28,18 +28,18 @@
   // lo/hi: normal street price; rep: who'll deal with you; depth: how much the street can take
   // before the price moves a lot (bigger = you can trade more at once)
   G.DRUGS = [
-    { id: 'ludes',   name: 'Ludes',    lo: 15,    hi: 80,    rep: 0,  depth: 500, art: 'drug_ludes' },
-    { id: 'speed',   name: 'Speed',    lo: 80,    hi: 260,   rep: 0,  depth: 350, art: 'drug_speed' },
-    { id: 'weed',    name: 'Weed',     lo: 250,   hi: 800,   rep: 0,  depth: 220, art: 'drug_weed' },
-    { id: 'hash',    name: 'Hash',     lo: 500,   hi: 1400,  rep: 4,  depth: 160, art: 'drug_hash' },
-    { id: 'ecstasy', name: 'Ecstasy',  lo: 600,   hi: 1700,  rep: 8,  depth: 120, art: 'drug_ecstasy' },
-    { id: 'shrooms', name: 'Shrooms',  lo: 700,   hi: 1800,  rep: 8,  depth: 110, art: 'drug_shrooms' },
-    { id: 'peyote',  name: 'Peyote',   lo: 1200,  hi: 3000,  rep: 14, depth: 80,  art: 'drug_peyote' },
-    { id: 'acid',    name: 'Acid',     lo: 1800,  hi: 5000,  rep: 18, depth: 70,  art: 'drug_acid' },
-    { id: 'meth',    name: 'Crystal',  lo: 3500,  hi: 9000,  rep: 25, depth: 55,  art: 'drug_meth' },
-    { id: 'opium',   name: 'Opium',    lo: 6000,  hi: 14000, rep: 32, depth: 45,  art: 'drug_opium' },
-    { id: 'heroin',  name: 'Heroin',   lo: 9000,  hi: 20000, rep: 42, depth: 35,  art: 'drug_heroin' },
-    { id: 'cocaine', name: 'Cocaine',  lo: 16000, hi: 34000, rep: 55, depth: 28,  art: 'drug_cocaine' },
+    { id: 'ludes',   name: 'Ludes',    lo: 15,    hi: 80,    rep: 0,  depth: 1250, art: 'drug_ludes' },
+    { id: 'speed',   name: 'Speed',    lo: 80,    hi: 260,   rep: 0,  depth: 875, art: 'drug_speed' },
+    { id: 'weed',    name: 'Weed',     lo: 250,   hi: 800,   rep: 0,  depth: 550, art: 'drug_weed' },
+    { id: 'hash',    name: 'Hash',     lo: 500,   hi: 1400,  rep: 4,  depth: 400, art: 'drug_hash' },
+    { id: 'ecstasy', name: 'Ecstasy',  lo: 600,   hi: 1700,  rep: 8,  depth: 300, art: 'drug_ecstasy' },
+    { id: 'shrooms', name: 'Shrooms',  lo: 700,   hi: 1800,  rep: 8,  depth: 275, art: 'drug_shrooms' },
+    { id: 'peyote',  name: 'Peyote',   lo: 1200,  hi: 3000,  rep: 14, depth: 200,  art: 'drug_peyote' },
+    { id: 'acid',    name: 'Acid',     lo: 1800,  hi: 5000,  rep: 18, depth: 175,  art: 'drug_acid' },
+    { id: 'meth',    name: 'Crystal',  lo: 3500,  hi: 9000,  rep: 25, depth: 138,  art: 'drug_meth' },
+    { id: 'opium',   name: 'Opium',    lo: 6000,  hi: 14000, rep: 32, depth: 112,  art: 'drug_opium' },
+    { id: 'heroin',  name: 'Heroin',   lo: 9000,  hi: 20000, rep: 42, depth: 88,  art: 'drug_heroin' },
+    { id: 'cocaine', name: 'Cocaine',  lo: 16000, hi: 34000, rep: 55, depth: 70,  art: 'drug_cocaine' },
   ];
 
   // risk: muggers and random trouble; police: how hard the cops look; gang: rival crews around.
